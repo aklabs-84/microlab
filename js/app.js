@@ -1,8 +1,10 @@
 import { Connection } from '../shared/device/connection.js';
 import { MODES, GROUPS } from './modes.js';
+import { buildNav } from './nav.js';
 
 const $ = (id) => document.getElementById(id);
 const conn = new Connection();
+const nav = buildNav({ bar: document.getElementById('topnav'), current: 'home' });
 let noDataTimer = null;
 let baseStatus = '';
 
@@ -207,7 +209,6 @@ function el(tag, cls, text) {
 
 function renderHome() {
   document.title = '마이크로랩';
-  $('crumb').hidden = true;
   const section = el('section', 'home');
 
   // 시작 순서: 센서 켜기 → 고르기
@@ -245,6 +246,7 @@ async function route() {
   unmount = null;
 
   const mode = MODES.find((m) => m.id === id && m.load);
+  nav.setActive(mode ? mode.id : 'home');
   if (!mode) return renderHome();
 
   view.textContent = '불러오는 중...';
@@ -253,7 +255,6 @@ async function route() {
     if (myToken !== routeToken) return; // 그 사이 다른 화면으로 이동함
     view.replaceChildren();
     document.title = mode.title + ' · 마이크로랩';
-    $('crumb').hidden = false;
     unmount = mod.mount(view, { conn });
   } catch (err) {
     if (myToken !== routeToken) return;

@@ -5,6 +5,7 @@ import { mountBlocks } from './blocks.js';
 import { mountHelp } from './help.js';
 import { mountMissions } from './missions.js';
 import { mountNotes } from './notes.js';
+import { askHint, getSettings, saveSettings, DEFAULT_MODEL } from '../../shared/ai/hint.js';
 
 // 내가 만드는 규칙 모드 (1단계: 글 코드)
 // 센서값을 보고 "이럴 때 → 이렇게 반응해라"를 학생이 직접 짜서 실행해 본다.
@@ -196,6 +197,7 @@ export function mount(root, { conn }) {
               <button data-run>▶ 실행</button>
               <button class="ghost" data-stop disabled>■ 멈춤</button>
               <button class="ghost" data-full title="화면을 크게 해서 봐요">⛶ 크게</button>
+              <button class="ghost" data-hint title="AI가 정답 대신 생각할 질문을 해 줘요">💡 힌트</button>
               <details class="more-menu" data-more>
                 <summary aria-label="더 보기">⋯</summary>
                 <div class="more-pop">
@@ -207,6 +209,19 @@ export function mount(root, { conn }) {
               <span class="run-pill" data-pill role="status">⚪ 멈춰 있어요</span>
             </div>
             <div class="msg warn" data-dirty hidden>고친 내용은 "다시 실행"을 눌러야 적용돼요.</div>
+            <div class="hint-box" data-hint-box hidden>
+              <p class="hint-text" data-hint-text role="status"></p>
+              <details class="ai-set">
+                <summary>⚙️ AI 설정 <small>(선생님이 알려 준 키를 넣을 수 있어요)</small></summary>
+                <label>AI 키 <input type="password" data-ai-key autocomplete="off" placeholder="비워 두면 기본 AI를 써요"></label>
+                <label>모델 <input type="text" data-ai-model placeholder="비워 두면 자동"></label>
+                <p class="small">키는 이 컴퓨터의 브라우저에만 저장돼요. 공용 컴퓨터에서는 쓰고 나서 [지우기]를 눌러요.</p>
+                <div class="actions" style="margin:0">
+                  <button class="mini" data-ai-save>저장</button>
+                  <button class="mini ghost" data-ai-clear>지우기</button>
+                </div>
+              </details>
+            </div>
             <div class="only-blocks block-wrap">
               <ol class="block-steps" aria-label="블록 쓰는 순서">
                 <li><b>1</b> 왼쪽 묶음을 눌러요</li>
@@ -621,6 +636,52 @@ export function mount(root, { conn }) {
     runner.stop();
     setRunning(false);
   }
+
+  // ---------- AI 힌트 ----------
+  const hintBtn = $('[data-hint]');
+  const hintBox = $('[data-hint-box]');
+  const hintText = $('[data-hint-text]');
+  const aiKeyEl = $('[data-ai-key]');
+  const aiModelEl = $('[data-ai-model]');
+  aiModelEl.placeholder = `비워 두면 자동 (${DEFAULT_MODEL})`;
+  aiKeyEl.value = getSettings().key;
+  aiModelEl.value = getSettings().model;
+  $('[data-ai-save]').addEventListener('click', () => {
+    try {
+      saveSettings({ key: aiKeyEl.value, model: aiModelEl.value });
+      hintText.textContent = '저장했어요. 이제 [💡 힌트]를 눌러 봐요.';
+    } catch (err) {
+      hintText.textContent = err.message;
+    }
+  });
+  $('[data-ai-clear]').addEventListener('click', () => {
+    aiKeyEl.value = '';
+    aiModelEl.value = '';
+    saveSettings({ key: '', model: '' });
+    hintText.textContent = '키를 지웠어요.';
+  });
+  let hintBusy = false;
+  hintBtn.addEventListener('click', async () => {
+    if (hintBusy) return;
+    hintBusy = true;
+    hintBtn.disabled = true;
+    hintBox.hidden = false;
+    hintText.textContent = '🤔 생각하는 중이에요…';
+    try {
+      hintText.textContent = '💡 ' + (await askHint({
+        code: codeEl.value,
+        prediction: notes.getDraft(),
+        log: logMini.textContent,
+        error: errEl.hidden ? '' : errEl.textContent,
+      }));
+    } catch (err) {
+      hintText.textContent = err.message;
+      root.querySelector('.ai-set').open = true;
+    } finally {
+      hintBusy = false;
+      hintBtn.disabled = false;
+    }
+  });
 
   runBtn.addEventListener('click', run);
   stopBtn.addEventListener('click', stop);

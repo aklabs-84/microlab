@@ -461,3 +461,28 @@ main:has(.rules-page) { max-width: 1120px; }
 button.mini { min-height: 36px; padding: 2px 12px; font-size: .9rem; }
 .matrix-fold { margin-top: 12px; }
 .matrix-fold summary { cursor: pointer; font-weight: 700; }
+
+/* AI 힌트 */
+.hint-box { margin: 8px 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); border: 1px solid var(--line); }
+.hint-text { margin: 0 0 8px; font-size: 1.05em; line-height: 1.6; white-space: pre-wrap; }
+.ai-set summary { cursor: pointer; color: var(--sub); }
+.ai-set label { display: block; margin: 8px 0; }
+.ai-set input { width: 100%; box-sizing: border-box; margin-top: 4px; }
+
+/* 맨 위 메뉴 바 */
+.topnav { position: sticky; top: 0; z-index: 20; background: var(--card); border-bottom: 1px solid var(--line); margin: -24px -16px 14px; }
+.topnav-in { max-width: 1120px; margin: 0 auto; padding: 8px 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; }
+.brand { font-weight: 800; font-size: 1.15rem; color: var(--text); text-decoration: none; white-space: nowrap; }
+.nav-menu { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.nav-menu a { padding: 6px 10px; border-radius: 999px; color: var(--text); text-decoration: none; font-size: .92rem; white-space: nowrap; }
+.nav-menu a:hover { background: var(--accent-soft); }
+.nav-menu a[aria-current="page"] { background: var(--accent); color: #fff; }
+.nav-menu .nav-right { margin-left: auto; }
+.nav-toggle { display: none; margin-left: auto; }
+@media (max-width: 760px) {
+  .nav-toggle { display: inline-block; }
+  .nav-menu { display: none; flex-basis: 100%; flex-direction: column; padding-bottom: 6px; }
+  .nav-menu.open { display: flex; }
+  .nav-menu a { padding: 10px 12px; border-radius: 10px; font-size: 1rem; }
+  .nav-menu .nav-right { margin-left: 0; }
+}

@@ -40,10 +40,45 @@
   progress { width: 100%; height: 14px; margin-top: 8px; }
   pre { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
     white-space: pre-wrap; font-size: .85rem; margin: 8px 0 0; }
+  .pct { font-weight: 700; margin-top: 6px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--ok); color: #fff;
+    padding: 12px 20px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.25); opacity: 0; pointer-events: none;
+    transition: opacity .25s, transform .25s; max-width: calc(100vw - 32px); z-index: 10; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  details.del { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-top: 16px; }
+  details.del summary { cursor: pointer; font-weight: 600; }
+  details.del ol { margin: 8px 0 0; padding-left: 20px; }
+  details.del li { margin-bottom: 6px; }
+  details.del code { background: var(--bg); padding: 1px 6px; border-radius: 6px; word-break: break-all; }
+/* 맨 위 메뉴 바 */
+  .topnav { position: sticky; top: 0; z-index: 20; background: var(--card); border-bottom: 1px solid var(--line); margin: -24px -16px 14px; }
+  .topnav-in { max-width: 1120px; margin: 0 auto; padding: 8px 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; }
+  .brand { font-weight: 800; font-size: 1.15rem; color: var(--text); text-decoration: none; white-space: nowrap; }
+  .nav-menu { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+  .nav-menu a { padding: 6px 10px; border-radius: 999px; color: var(--text); text-decoration: none; font-size: .92rem; white-space: nowrap; }
+  .nav-menu a:hover { background: rgba(129,140,248,.18); }
+  .nav-menu a[aria-current="page"] { background: var(--accent); color: #fff; }
+  .nav-menu .nav-right { margin-left: auto; }
+  .nav-toggle { display: none; margin-left: auto; }
+  @media (max-width: 760px) {
+    .nav-toggle { display: inline-block; }
+    .nav-menu { display: none; flex-basis: 100%; flex-direction: column; padding-bottom: 6px; }
+    .nav-menu.open { display: flex; }
+    .nav-menu a { padding: 10px 12px; border-radius: 10px; font-size: 1rem; }
+    .nav-menu .nav-right { margin-left: 0; }
+  }
+  
   .note { color: var(--sub); font-size: .85rem; margin-top: 24px; }
 </style>
 </head>
 <body>
+<header class="topnav" id="topnav">
+  <div class="topnav-in">
+    <a class="brand" href="../../#/">🔬 마이크로랩</a>
+    <button class="nav-toggle" data-nav-toggle aria-expanded="false" aria-controls="nav-menu">☰ 메뉴</button>
+    <nav class="nav-menu" id="nav-menu" data-nav-menu aria-label="메뉴"></nav>
+  </div>
+</header>
 <main>
   <h1>기기 점검 페이지</h1>
   <p class="lead">이 컴퓨터(크롬북)에서 센서 장치 연결과 AI 기능이 되는지 확인해요. 페이지를 열면 자동으로 점검합니다.</p>
@@ -57,6 +92,16 @@
   <div id="group-spec"></div>
 
   <h2>3. 브라우저 안에서 AI 돌리기</h2>
+  <details class="del" id="ai-about" open>
+    <summary>🤖 내장 AI가 뭐예요?</summary>
+    <ul>
+      <li>크롬 안에 들어 있는 <b>작은 AI</b>예요. 인터넷이 없어도, 이 컴퓨터 안에서만 돌아가요.</li>
+      <li>마이크로랩에서는 <b>🧪 내가 만드는 규칙</b>의 <b>💡 힌트</b>가 이 AI를 써요. 정답 대신 생각해 볼 질문을 해 줘요.</li>
+      <li>내가 쓴 글이 밖으로 나가지 않고, 무료예요.</li>
+      <li>내려받는 크기는 <b>약 2GB</b>(크롬 버전에 따라 달라요)예요. 와이파이에서 미리 받아 두세요.</li>
+      <li>큰 AI보다는 약해요. 안 되는 컴퓨터에서는 선생님이 알려 준 키나 서버 AI를 써요.</li>
+    </ul>
+  </details>
   <div id="group-ai"></div>
 
   <div class="actions">
@@ -65,7 +110,22 @@
     <button id="btn-rerun" class="ghost">🔄 다시 점검</button>
   </div>
   <progress id="progress" max="1" value="0" hidden></progress>
+  <div class="pct" id="pct" hidden></div>
   <pre id="test-out" hidden></pre>
+
+  <details class="del" id="del-guide">
+    <summary>🗑️ 내려받은 내장 AI 지우는 방법</summary>
+    <p class="hint">내장 AI 모델은 크롬이 관리해서, 웹페이지가 직접 지울 수 없어요. 아래 순서로 지워 주세요.</p>
+    <ol>
+      <li>크롬 <b>설정 → 시스템</b>에서 <b>온디바이스 AI</b>(On-device AI)를 꺼요. 끄면 모델이 지워지고 다시 받지 않아요.</li>
+      <li>그 메뉴가 없으면 주소창에 <code>chrome://flags</code>를 열고 <b>Prompt API for Gemini Nano</b>와 <b>Enable on device model</b> 같은 항목을 <b>Disabled</b>로 바꾼 뒤 크롬을 다시 시작해요.</li>
+      <li>그래도 남아 있으면 크롬을 끈 뒤 폴더 <code>OptGuideOnDeviceModel</code>을 지워요.<br>
+        맥: <code>~/Library/Application Support/Google/Chrome/OptGuideOnDeviceModel</code><br>
+        윈도우: <code>%LOCALAPPDATA%\Google\Chrome\User Data\OptGuideOnDeviceModel</code></li>
+    </ol>
+    <p class="hint">1·2번을 하지 않고 폴더만 지우면 크롬이 다시 내려받을 수 있어요. 크롬 버전에 따라 메뉴 이름이 다를 수 있어요.</p>
+  </details>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <p class="note">
     이 페이지는 점검 결과를 어디에도 보내지 않아요. 모든 확인은 이 컴퓨터 안에서만 이루어집니다.
@@ -73,6 +133,10 @@
   </p>
 </main>
 
+<script type="module">
+  import { buildNav } from "../../js/nav.js";
+  buildNav({ bar: document.getElementById("topnav"), base: "../../", current: "device-check" });
+</script>
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -247,10 +311,20 @@
     results.unshift("== 결과: " + title);
   }
 
+  let toastTimer = 0;
+  function toast(text, ms = 5000) {
+    const t = $("toast");
+    t.textContent = text;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), ms);
+  }
+
   // ---- 실제 테스트 ----
   $("btn-test").addEventListener("click", async () => {
-    const out = $("test-out"), prog = $("progress"), btn = $("btn-test");
-    btn.disabled = true; out.hidden = false; prog.hidden = false; prog.value = 0;
+    const out = $("test-out"), prog = $("progress"), btn = $("btn-test"), pct = $("pct");
+    let downloaded = false;
+    btn.disabled = true; out.hidden = false; prog.hidden = false; prog.value = 0; pct.hidden = true;
     out.textContent = "AI를 준비하는 중... (처음엔 모델 다운로드로 몇 분 걸릴 수 있어요)";
     try {
       const t0 = performance.now();
@@ -259,12 +333,23 @@
         expectedOutputs: [{ type: "text", languages: ["en"] }],
         monitor(m) {
           m.addEventListener("downloadprogress", (e) => {
+            downloaded = true;
             prog.value = e.loaded;
-            out.textContent = `모델 내려받는 중... ${(e.loaded * 100).toFixed(0)}%`;
+            pct.hidden = false;
+            const n = Math.floor(e.loaded * 100);
+            pct.textContent = n >= 100 ? "⬇️ 100% · 내려받기 끝! 모델을 준비하는 중이에요…" : `⬇️ 내려받는 중 ${n}%`;
+            out.textContent = "모델 내려받는 중이에요. 이 창을 닫지 말아 주세요.";
           });
         },
       });
       const t1 = performance.now();
+      if (downloaded) {
+        pct.hidden = false;
+        pct.textContent = "✅ 내려받기 완료 (100%)";
+        toast("✅ 내장 AI 다운로드가 끝났어요! 이제 무료로 쓸 수 있어요.");
+      } else {
+        toast("✅ 내장 AI가 이미 준비되어 있어요.");
+      }
       out.textContent = "AI에게 말을 거는 중...";
       const answer = await session.prompt("Say hello to a student in one short sentence.");
       const t2 = performance.now();
@@ -273,9 +358,12 @@
       if (session.destroy) session.destroy();
     } catch (e) {
       out.textContent = "실패: " + e.message;
+      pct.hidden = true;
+      toast("⚠️ 내장 AI를 준비하지 못했어요. 아래 내용을 확인해 주세요.", 6000);
       results.push("[테스트 실패] " + e.message);
     } finally {
       prog.hidden = true; btn.disabled = false;
+      if (downloaded) runChecks(); // 점검 표를 새 상태(바로 사용 가능)로 고친다
     }
   });
 

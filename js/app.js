@@ -213,7 +213,7 @@ function renderHome() {
 
   // 시작 순서: 센서 켜기 → 고르기
   const howto = el('ol', 'howto');
-  for (const [n, text] of [['1', '위에서 센서를 켜요'], ['2', '하고 싶은 걸 골라요']]) {
+  for (const [n, text] of [['1', '오른쪽 아래에서 센서를 켜요'], ['2', '하고 싶은 걸 골라요']]) {
     const li = el('li');
     li.append(el('b', '', n), text);
     howto.appendChild(li);

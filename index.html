@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>마이크로랩</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <header class="app-head">
+    <h1><a href="#/">🔬 마이크로랩</a></h1>
+    <a id="crumb" class="crumb" href="#/" hidden>← 처음으로</a>
+  </header>
+
+  <section class="sensorbar" aria-label="센서 켜기">
+    <div class="sensorbar-row">
+      <span id="status" class="status" role="status">센서가 꺼져 있어요</span>
+      <button id="btn-start" class="start-btn" aria-expanded="false" aria-controls="connect-pick">🔌 센서 켜기</button>
+      <button id="btn-disconnect" class="ghost" hidden>연결 끊기</button>
+    </div>
+    <div id="connect-pick" class="connect-pick" hidden>
+      <p class="pick-title">어떻게 켤까요?</p>
+      <div class="pick-grid">
+        <button id="btn-connect" class="pick"><span class="em">🔌</span><b>USB로 켜기</b><small>케이블로 연결해요</small></button>
+        <button id="btn-ble" class="pick"><span class="em">📶</span><b>블루투스로 켜기</b><small>선 없이 연결해요 (v2만)</small></button>
+        <button id="btn-sim" class="pick"><span class="em">🖱️</span><b>마우스로 해 보기</b><small>마이크로비트가 없어도 돼요</small></button>
+      </div>
+    </div>
+  </section>
+  <div id="msg" class="msg" role="status" hidden></div>
+  <div id="sim-float" class="pad-float" hidden>
+    <div class="pad-bar" id="pad-bar">🖱️ 연습 판 <button id="pad-fold" type="button" aria-expanded="true">접기</button></div>
+    <div id="sim-pad" class="pad">
+      <div class="pad-hint" id="pad-hint">🖱️ 여기서 마우스를<br>움직여 봐요</div>
+      <div class="pad-scene" aria-hidden="true"><div class="pad-board" id="pad-board"><i class="btn-a"></i><i class="btn-b"></i></div></div>
+      <div class="pad-dot" id="pad-dot" aria-hidden="true"></div>
+      <div class="pad-state" id="pad-state" role="status">판 밖이에요 · 센서는 가만히 있어요</div>
+    </div>
+  </div>
+
+  <div id="view"></div>
+
+  <details id="setup" class="card">
+    <summary>❓ 처음이라면: 마이크로비트 준비하기</summary>
+    <ol>
+      <li><a href="firmware/microlab.hex" download="microlab.hex">📥 프로그램 파일(microlab.hex) 받기</a>를 눌러 파일을 받아요.</li>
+      <li>받은 파일을 마이크로비트(MICROBIT 드라이브)에 끌어다 놓아요. 화면에 하트가 깜빡이면 성공이에요.</li>
+      <li>USB 케이블로 컴퓨터와 연결해요. (충전만 되는 케이블은 안 돼요)</li>
+      <li>크롬이나 엣지에서 위의 "센서 켜기 → USB로 켜기"를 누르고 목록에서 마이크로비트를 골라요.</li>
+    </ol>
+    <p><b>📶 선 없이 쓰고 싶다면 (micro:bit v2만 가능)</b></p>
+    <ol>
+      <li><a href="firmware/microlab-ble.hex" download="microlab-ble.hex">📥 블루투스용 파일(microlab-ble.hex) 받기</a>를 눌러 마이크로비트(MICROBIT 드라이브)에 끌어다 놓아요.</li>
+      <li>건전지 팩을 연결하고 켜요. (USB 케이블은 빼도 돼요)</li>
+      <li>컴퓨터의 블루투스를 켜고, 크롬이나 엣지에서 위의 "센서 켜기 → 블루투스로 켜기"를 눌러 목록에서 "BBC micro:bit"를 골라요. 연결되면 하트가 깜빡여요.</li>
+    </ol>
+    <p class="small">컴퓨터가 괜찮은지 궁금하면 <a href="tools/device-check/">기기 점검 페이지</a>를 열어 보세요.</p>
+  </details>
+</main>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

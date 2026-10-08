@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>기기 점검 페이지</title>
+<style>
+  :root {
+    --bg: #f6f7fb; --card: #fff; --text: #1d2433; --sub: #5d667a; --line: #e3e6ef;
+    --ok: #16a34a; --warn: #d97706; --bad: #dc2626; --accent: #4f46e5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #12141c; --card: #1b1e29; --text: #eceef5; --sub: #a0a8bd; --line: #2b3042; --accent: #818cf8; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 64px; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; line-height: 1.55; }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .lead { color: var(--sub); margin: 0 0 20px; }
+  h2 { font-size: 1.05rem; margin: 28px 0 10px; }
+  .verdict { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 8px; }
+  .verdict b { font-size: 1.1rem; }
+  .verdict ul { margin: 8px 0 0; padding-left: 20px; color: var(--sub); }
+  .row { display: grid; grid-template-columns: 28px 1fr; gap: 10px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+  .icon { font-size: 1.15rem; line-height: 1.4; }
+  .name { font-weight: 600; }
+  .value { font-family: ui-monospace, Menlo, monospace; font-size: .86rem; color: var(--text); word-break: break-all; }
+  .hint { color: var(--sub); font-size: .88rem; margin-top: 2px; }
+  .ok .icon::before { content: "✅"; } .warn .icon::before { content: "⚠️"; } .bad .icon::before { content: "❌"; }
+  .wait .icon::before { content: "⏳"; }
+  .ok { border-left: 4px solid var(--ok); } .warn { border-left: 4px solid var(--warn); }
+  .bad { border-left: 4px solid var(--bad); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  button { font: inherit; background: var(--accent); color: #fff; border: 0; border-radius: 10px;
+    padding: 10px 16px; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  progress { width: 100%; height: 14px; margin-top: 8px; }
+  pre { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+    white-space: pre-wrap; font-size: .85rem; margin: 8px 0 0; }
+  .note { color: var(--sub); font-size: .85rem; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>기기 점검 페이지</h1>
+  <p class="lead">이 컴퓨터(크롬북)에서 센서 장치 연결과 AI 기능이 되는지 확인해요. 페이지를 열면 자동으로 점검합니다.</p>
+
+  <div class="verdict" id="verdict"><b>점검 중...</b></div>
+
+  <h2>1. 장치 연결 (마이크로비트·아두이노)</h2>
+  <div id="group-connect"></div>
+
+  <h2>2. 컴퓨터 사양</h2>
+  <div id="group-spec"></div>
+
+  <h2>3. 브라우저 안에서 AI 돌리기</h2>
+  <div id="group-ai"></div>
+
+  <div class="actions">
+    <button id="btn-test" disabled>🤖 내장 AI 실제로 말 걸어보기</button>
+    <button id="btn-copy" class="ghost">📋 결과 복사하기</button>
+    <button id="btn-rerun" class="ghost">🔄 다시 점검</button>
+  </div>
+  <progress id="progress" max="1" value="0" hidden></progress>
+  <pre id="test-out" hidden></pre>
+
+  <p class="note">
+    이 페이지는 점검 결과를 어디에도 보내지 않아요. 모든 확인은 이 컴퓨터 안에서만 이루어집니다.
+    '내장 AI 실제로 말 걸어보기'를 누르면 AI 모델(수 GB)을 내려받을 수 있으니, 와이파이에 연결된 상태에서 눌러 주세요.
+  </p>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const results = [];           // 복사용 보고서 데이터
+  let aiState = "unknown";      // 내장 AI 상태
+  let gpuOk = false;
+  let serialOk = false, bleOk = false;
+
+  const makeRow = (group, title) => {
+    const el = document.createElement("div");
+    el.className = "row wait";
+    const icon = document.createElement("div"); icon.className = "icon";
+    const body = document.createElement("div");
+    const name = document.createElement("div"); name.className = "name"; name.textContent = title;
+    const val = document.createElement("div"); val.className = "value";
+    const hint = document.createElement("div"); hint.className = "hint";
+    body.append(name, val, hint);
+    el.append(icon, body);
+    $(group).appendChild(el);
+    return {
+      set(status, value, hintText) {
+        el.className = "row " + status;
+        val.textContent = value || "";
+        hint.textContent = hintText || "";
+        results.push(`${{ok: "[OK]", warn: "[주의]", bad: "[안됨]"}[status]} ${title}: ${value || ""}`);
+      }
+    };
+  };
+
+  async function runChecks() {
+    results.length = 0;
+    ["group-connect", "group-spec", "group-ai"].forEach((g) => ($(g).textContent = ""));
+
+    // ---- 1. 장치 연결 ----
+    const secure = makeRow("group-connect", "안전한 주소(https)");
+    secure.set(window.isSecureContext ? "ok" : "bad",
+      window.isSecureContext ? "예" : "아니요",
+      window.isSecureContext ? "" : "https 주소나 localhost에서만 장치 연결이 됩니다.");
+
+    const serial = makeRow("group-connect", "USB 시리얼 연결 (아두이노·피코·마이크로비트 USB)");
+    serialOk = "serial" in navigator;
+    serial.set(serialOk ? "ok" : "bad", serialOk ? "지원" : "지원 안 함",
+      serialOk ? "" : "크롬 또는 엣지 브라우저가 필요해요. 사파리·아이패드는 안 됩니다.");
+
+    const ble = makeRow("group-connect", "블루투스 연결 (마이크로비트 무선)");
+    bleOk = "bluetooth" in navigator;
+    let bleNote = "";
+    if (bleOk && navigator.bluetooth.getAvailability) {
+      try {
+        const avail = await navigator.bluetooth.getAvailability();
+        if (!avail) { bleOk = false; bleNote = "브라우저는 지원하지만 이 컴퓨터의 블루투스가 꺼져 있거나 없어요."; }
+      } catch (e) { /* 무시 */ }
+    }
+    ble.set(bleOk ? "ok" : "warn", bleOk ? "사용 가능" : "사용 불가",
+      bleOk ? "" : (bleNote || "블루투스 연결은 안 되지만 USB로는 쓸 수 있어요."));
+
+    const usb = makeRow("group-connect", "WebUSB (마이크로비트 프로그램 올리기)");
+    usb.set("usb" in navigator ? "ok" : "warn", "usb" in navigator ? "지원" : "지원 안 함", "");
+
+    // ---- 2. 컴퓨터 사양 ----
+    const brands = (navigator.userAgentData && navigator.userAgentData.brands || [])
+      .filter((b) => !/Not/i.test(b.brand)).map((b) => `${b.brand} ${b.version}`).join(", ");
+    const br = makeRow("group-spec", "브라우저");
+    const isChrome = /Chrom/.test(navigator.userAgent) && !/Edg|OPR/.test(navigator.userAgent);
+    br.set(isChrome ? "ok" : "warn", brands || navigator.userAgent,
+      isChrome ? "" : "내장 AI는 크롬에서만 확인할 수 있어요.");
+
+    const os = makeRow("group-spec", "운영체제");
+    const isCros = /CrOS/.test(navigator.userAgent);
+    os.set("ok", (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform,
+      isCros ? "크롬북이에요. 내장 AI는 'Chromebook Plus' 기종만 지원합니다 (아래 결과로 확인)." : "");
+
+    const mem = makeRow("group-spec", "메모리(RAM)");
+    const dm = navigator.deviceMemory;
+    mem.set(dm >= 8 ? "ok" : dm ? "warn" : "warn",
+      dm ? (dm >= 8 ? "8GB 이상" : `약 ${dm}GB`) : "알 수 없음",
+      "브라우저는 보호를 위해 최대 8GB까지만 알려줘요. CPU로 내장 AI를 쓰려면 16GB가 필요합니다.");
+
+    const cpu = makeRow("group-spec", "CPU 코어 수");
+    const cores = navigator.hardwareConcurrency;
+    cpu.set(cores >= 4 ? "ok" : "warn", `${cores || "?"}개`, cores >= 4 ? "" : "코어 4개 이상 권장");
+
+    const st = makeRow("group-spec", "브라우저가 쓸 수 있는 저장 공간 (대략)");
+    try {
+      const est = await navigator.storage.estimate();
+      const gb = (est.quota / 1e9);
+      st.set(gb >= 22 ? "ok" : "warn", `약 ${gb.toFixed(0)}GB 사용 가능 (이미 쓴 양 ${(est.usage / 1e6).toFixed(0)}MB)`,
+        "내장 AI는 크롬 프로필 드라이브에 여유 공간 22GB 이상이 필요해요. 이 숫자는 참고용이에요.");
+    } catch (e) { st.set("warn", "확인 못함", ""); }
+
+    const net = makeRow("group-spec", "네트워크");
+    const c = navigator.connection;
+    net.set(c && c.saveData ? "warn" : "ok",
+      c ? `${c.effectiveType || "?"} / 다운로드 약 ${c.downlink || "?"}Mbps${c.saveData ? " / 데이터 절약 모드" : ""}` : "알 수 없음",
+      "AI 모델 첫 다운로드(수 GB)는 학교 와이파이에서 한 번만 하면 돼요.");
+
+    // ---- 3. AI ----
+    const gpu = makeRow("group-ai", "WebGPU (그래픽 가속)");
+    try {
+      if (!navigator.gpu) throw new Error("none");
+      const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) throw new Error("noadapter");
+      const info = adapter.info || (adapter.requestAdapterInfo ? await adapter.requestAdapterInfo() : {});
+      const maxBuf = (adapter.limits.maxBufferSize / 1e9).toFixed(1);
+      gpuOk = true;
+      gpu.set("ok", `${info.vendor || "?"} ${info.architecture || ""} / 최대 버퍼 ${maxBuf}GB${adapter.features.has("shader-f16") ? " / f16 지원" : ""}`,
+        "브라우저에 직접 AI 모델(Gemma 등)을 올리는 방식은 이게 필요해요.");
+    } catch (e) {
+      gpuOk = false;
+      gpu.set("bad", "사용 불가", "WebGPU가 없어서 직접 모델 로드 방식은 어려워요.");
+    }
+
+    const lm = makeRow("group-ai", "크롬 내장 AI (Gemini Nano, Prompt API)");
+    aiState = "none";
+    if (!("LanguageModel" in self)) {
+      lm.set("bad", "이 브라우저에는 없음",
+        "크롬 최신 버전의 Windows·맥·리눅스·Chromebook Plus에서 쓸 수 있어요. chrome://on-device-internals 에서 자세한 상태를 볼 수 있어요.");
+    } else {
+      try {
+        const a = await LanguageModel.availability({
+          expectedInputs: [{ type: "text", languages: ["en"] }],
+          expectedOutputs: [{ type: "text", languages: ["en"] }],
+        });
+        aiState = a;
+        const map = {
+          available: ["ok", "바로 사용 가능 (모델이 이미 있어요)", ""],
+          downloadable: ["ok", "사용 가능 (모델 다운로드 필요)", "아래 버튼으로 내려받고 테스트할 수 있어요."],
+          downloading: ["warn", "모델 다운로드 중", "다 받아지면 다시 점검해 보세요."],
+          unavailable: ["bad", "이 기기에서는 사용 불가", "사양이 부족하거나 지원하지 않는 기기예요. 클라우드 AI를 쓰는 방법이 필요해요."],
+        };
+        const m = map[a] || ["warn", String(a), ""];
+        lm.set(m[0], m[1], m[2]);
+        $("btn-test").disabled = !(a === "available" || a === "downloadable");
+      } catch (e) {
+        aiState = "error";
+        lm.set("warn", "확인 중 오류: " + e.message, "");
+      }
+
+      const ko = makeRow("group-ai", "내장 AI 한국어 지원");
+      try {
+        const k = await LanguageModel.availability({
+          expectedInputs: [{ type: "text", languages: ["ko"] }],
+          expectedOutputs: [{ type: "text", languages: ["ko"] }],
+        });
+        ko.set(k === "unavailable" ? "warn" : "ok", k === "unavailable" ? "아직 지원 안 함" : "지원 (" + k + ")",
+          k === "unavailable" ? "한국어 질문은 영어로 바꿔 다루거나 클라우드 AI와 함께 써야 할 수 있어요." : "");
+      } catch (e) {
+        ko.set("warn", "확인 못함: " + e.message, "");
+      }
+    }
+
+    renderVerdict();
+  }
+
+  function renderVerdict() {
+    const lines = [];
+    const aiLocal = aiState === "available" || aiState === "downloadable" || aiState === "downloading";
+    let title, color;
+    if (serialOk && aiLocal) { title = "🎉 센서 연결 OK + 내장 AI(무료) 사용 가능한 기기예요"; color = "var(--ok)"; }
+    else if (serialOk) { title = "👍 센서 연결은 OK, 내장 AI는 어려워요 (클라우드 AI 필요)"; color = "var(--warn)"; }
+    else { title = "⚠️ 크롬/엣지 브라우저에서 다시 점검해 주세요"; color = "var(--bad)"; }
+    lines.push(aiLocal ? "내장 AI: 가능 → 말로 코딩하기 등을 무료로 쓸 수 있어요." : "내장 AI: 불가 → 클라우드 AI(API 비용)가 필요해요.");
+    lines.push(gpuOk ? "WebGPU 가능 → 작은 모델을 직접 올리는 방식도 시도할 수 있어요." : "WebGPU 불가 → 직접 모델 올리는 방식은 어려워요.");
+    lines.push("제스처·소리 학습 같은 작은 AI 활동(A 종류)은 대부분의 기기에서 가능해요.");
+    const v = $("verdict");
+    v.style.borderColor = color;
+    v.textContent = "";
+    const b = document.createElement("b"); b.textContent = title;
+    const ul = document.createElement("ul");
+    lines.forEach((t) => { const li = document.createElement("li"); li.textContent = t; ul.appendChild(li); });
+    v.append(b, ul);
+    results.unshift("== 결과: " + title);
+  }
+
+  // ---- 실제 테스트 ----
+  $("btn-test").addEventListener("click", async () => {
+    const out = $("test-out"), prog = $("progress"), btn = $("btn-test");
+    btn.disabled = true; out.hidden = false; prog.hidden = false; prog.value = 0;
+    out.textContent = "AI를 준비하는 중... (처음엔 모델 다운로드로 몇 분 걸릴 수 있어요)";
+    try {
+      const t0 = performance.now();
+      const session = await LanguageModel.create({
+        expectedInputs: [{ type: "text", languages: ["en"] }],
+        expectedOutputs: [{ type: "text", languages: ["en"] }],
+        monitor(m) {
+          m.addEventListener("downloadprogress", (e) => {
+            prog.value = e.loaded;
+            out.textContent = `모델 내려받는 중... ${(e.loaded * 100).toFixed(0)}%`;
+          });
+        },
+      });
+      const t1 = performance.now();
+      out.textContent = "AI에게 말을 거는 중...";
+      const answer = await session.prompt("Say hello to a student in one short sentence.");
+      const t2 = performance.now();
+      out.textContent = `AI 대답: ${answer}\n\n준비 시간 ${((t1 - t0) / 1000).toFixed(1)}초 / 대답 시간 ${((t2 - t1) / 1000).toFixed(1)}초`;
+      results.push(`[테스트] 대답 시간 ${((t2 - t1) / 1000).toFixed(1)}초`);
+      if (session.destroy) session.destroy();
+    } catch (e) {
+      out.textContent = "실패: " + e.message;
+      results.push("[테스트 실패] " + e.message);
+    } finally {
+      prog.hidden = true; btn.disabled = false;
+    }
+  });
+
+  $("btn-copy").addEventListener("click", async () => {
+    const text = results.join("\n");
+    try { await navigator.clipboard.writeText(text); $("btn-copy").textContent = "✅ 복사됨!"; }
+    catch (e) { const o = $("test-out"); o.hidden = false; o.textContent = text; }
+    setTimeout(() => ($("btn-copy").textContent = "📋 결과 복사하기"), 1500);
+  });
+  $("btn-rerun").addEventListener("click", () => { $("verdict").textContent = "점검 중..."; runChecks(); });
+
+  runChecks();
+})();
+</script>
+</body>
+</html>

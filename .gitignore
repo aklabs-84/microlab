@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# 에디터
+.vscode/
+.idea/
+
+# 환경변수·키 (API 키는 절대 올리지 않는다)
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel/
+
+# 나중에 npm을 쓰게 될 때를 대비
+node_modules/
+
+# 로그·임시 파일
+*.log
+*.tmp
